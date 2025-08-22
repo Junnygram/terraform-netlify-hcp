@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Netlify × HCP Terraform — Static Site</title>
+    <meta
+      name="description"
+      content="A tiny static site deployed to Netlify with remote state in HCP Terraform."
+    />
+    <meta property="og:title" content="Netlify × HCP Terraform — Static Site" />
+    <meta
+      property="og:description"
+      content="Deployed with Terraform. State stored in HCP Terraform."
+    />
+    <meta name="theme-color" content="#3b82f6" />
+
+    <style>
+      :root {
+        --bg: #0b1020;
+        --card: #0f172a;
+        --ink: #e5e7eb;
+        --muted: #94a3b8;
+        --brand: #22d3ee; /* cyan */
+        --accent: #a78bfa; /* violet */
+        --ok: #34d399;
+        --warn: #fbbf24;
+        --shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+        --radius: 18px;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        height: 100%;
+      }
+      body {
+        margin: 0;
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto,
+          Ubuntu, Cantarell, Noto Sans, 'Helvetica Neue', Arial,
+          'Apple Color Emoji', 'Segoe UI Emoji';
+        color: var(--ink);
+        background: radial-gradient(
+            1200px 600px at 10% -10%,
+            rgba(167, 139, 250, 0.25),
+            transparent 60%
+          ),
+          radial-gradient(
+            900px 500px at 110% 10%,
+            rgba(34, 211, 238, 0.18),
+            transparent 60%
+          ),
+          var(--bg);
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+      .wrap {
+        max-width: 1040px;
+        margin: 0 auto;
+        padding: 28px;
+      }
+      header {
+        display: grid;
+        gap: 18px;
+        grid-template-columns: 1fr auto;
+        align-items: center;
+        margin-bottom: 24px;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        font-weight: 700;
+        letter-spacing: 0.3px;
+      }
+      .badge {
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: linear-gradient(90deg, var(--brand), var(--accent));
+        color: #0b1020;
+        font-weight: 700;
+        font-size: 12px;
+        box-shadow: var(--shadow);
+      }
+      .card {
+        background: linear-gradient(
+            180deg,
+            rgba(255, 255, 255, 0.02),
+            transparent 30%
+          ),
+          var(--card);
+        border: 1px solid rgba(148, 163, 184, 0.18);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+      }
+      .hero {
+        display: grid;
+        gap: 22px;
+        padding: 32px;
+        overflow: hidden;
+        position: relative;
+      }
+      .hero h1 {
+        margin: 0;
+        font-size: clamp(28px, 4.6vw, 44px);
+        line-height: 1.1;
+        letter-spacing: 0.2px;
+      }
+      .hero p {
+        color: var(--muted);
+        margin: 0;
+      }
+      .stack {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 14px;
+      }
+      .pill {
+        border: 1px solid rgba(148, 163, 184, 0.2);
+        padding: 8px 12px;
+        border-radius: 999px;
+        color: var(--ink);
+        font-size: 13px;
+        background: rgba(148, 163, 184, 0.06);
+      }
+      .grid {
+        display: grid;
+        gap: 16px;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        margin-top: 22px;
+      }
+      .box {
+        padding: 18px;
+        border-radius: 14px;
+        background: rgba(2, 6, 23, 0.7);
+        border: 1px solid rgba(148, 163, 184, 0.15);
+      }
+      .box h3 {
+        margin: 0.2rem 0 0.4rem 0;
+        font-size: 16px;
+      }
+      code,
+      .mono {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+          'Liberation Mono', 'Courier New', monospace;
+      }
+      pre {
+        margin: 0;
+        padding: 14px;
+        background: #0b1220;
+        border: 1px solid rgba(148, 163, 184, 0.15);
+        border-radius: 12px;
+        overflow: auto;
+      }
+      .cta {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-top: 6px;
+      }
+      .btn {
+        appearance: none;
+        border: 0;
+        cursor: pointer;
+        padding: 10px 14px;
+        border-radius: 12px;
+        font-weight: 700;
+        background: linear-gradient(90deg, var(--brand), var(--accent));
+        color: #0b1020;
+        box-shadow: var(--shadow);
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .btn.secondary {
+        background: transparent;
+        color: var(--ink);
+        border: 1px solid rgba(148, 163, 184, 0.3);
+      }
+      footer {
+        margin: 38px 0 8px;
+        color: var(--muted);
+        font-size: 13px;
+        text-align: center;
+      }
+      .ticker {
+        position: absolute;
+        inset: auto -40px -32px -40px;
+        height: 48px;
+        display: flex;
+        align-items: center;
+        gap: 24px;
+        background: linear-gradient(
+          90deg,
+          rgba(34, 211, 238, 0.15),
+          rgba(167, 139, 250, 0.15)
+        );
+        border-top: 1px solid rgba(148, 163, 184, 0.25);
+        padding: 0 20px;
+        overflow: hidden;
+      }
+      .ticker span {
+        white-space: nowrap;
+        animation: slide 22s linear infinite;
+      }
+      @keyframes slide {
+        from {
+          transform: translateX(0);
+        }
+        to {
+          transform: translateX(-50%);
+        }
+      }
+      .ok {
+        color: var(--ok);
+      }
+      .warn {
+        color: var(--warn);
+      }
+      .divider {
+        height: 1px;
+        background: rgba(148, 163, 184, 0.15);
+        margin: 16px -8px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header>
+        <div class="brand">
+          <svg
+            width="28"
+            height="28"
+            viewBox="0 0 24 24"
+            fill="none"
+            aria-hidden="true"
+          >
+            <circle
+              cx="12"
+              cy="12"
+              r="10"
+              stroke="url(#g1)"
+              stroke-width="2"
+            ></circle>
+            <path
+              d="M6.5 13.5l3.5 3.5 7.5-7.5"
+              stroke="url(#g2)"
+              stroke-width="2"
+              fill="none"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+            <defs>
+              <linearGradient id="g1" x1="0" y1="0" x2="24" y2="24">
+                <stop stop-color="#22d3ee" />
+                <stop offset="1" stop-color="#a78bfa" />
+              </linearGradient>
+              <linearGradient id="g2" x1="6" y1="6" x2="20" y2="20">
+                <stop stop-color="#22d3ee" />
+                <stop offset="1" stop-color="#a78bfa" />
+              </linearGradient>
+            </defs>
+          </svg>
+          <span>Netlify × HCP Terraform</span>
+          <span class="badge">Deployed by Terraform</span>
+        </div>
+        <div class="mono" id="host-pill">host: —</div>
+      </header>
+
+      <main class="card hero" id="screenshot">
+        <div>
+          <h1>
+            Static site, remote state.<br />
+            Zero fuss deployments.
+          </h1>
+          <p>
+            This site was provisioned with <strong>Terraform</strong>, hosted on
+            <strong>Netlify</strong>, and tracks its state in
+            <strong>HCP Terraform</strong>.
+          </p>
+          <div class="stack">
+            <span class="pill">Provider: netlify</span>
+            <span class="pill">Backend: cloud (HCP Terraform)</span>
+            <span class="pill"
+              >Workspace:
+              <span class="mono" id="tf-workspace">netlify-site</span></span
+            >
+            <span class="pill"
+              >Org: <span class="mono" id="tf-org">your-hcp-org</span></span
+            >
+          </div>
+          <div class="cta">
+            <a
+              class="btn"
+              href="https://www.netlify.com/"
+              target="_blank"
+              rel="noreferrer"
+              >View on Netlify</a
+            >
+            <a
+              class="btn secondary"
+              href="https://developer.hashicorp.com/terraform"
+              target="_blank"
+              rel="noreferrer"
+              >Terraform Docs</a
+            >
+          </div>
+        </div>
+
+        <div class="grid">
+          <div class="box">
+            <h3>What’s included</h3>
+            <ul>
+              <li>Minimal, self-contained HTML + CSS</li>
+              <li>Auto-detects your <span class="mono">hostname</span></li>
+              <li>Sample Netlify form (no JS)</li>
+              <li>“Deployed by Terraform” badge</li>
+            </ul>
+          </div>
+          <div class="box">
+            <h3>How this was created</h3>
+            <pre><code>terraform init
+terraform plan
+terraform apply</code></pre>
+            <div class="divider"></div>
+            <small class="mono"
+              >State: HCP Terraform (remote) • Provider: netlify/netlify</small
+            >
+          </div>
+          <div class="box">
+            <h3>Outputs</h3>
+            <p>
+              Live URL →
+              <span class="mono" id="live-url"
+                >https://example.netlify.app</span
+              >
+            </p>
+            <p>Status → <span class="ok">✓ healthy</span></p>
+          </div>
+        </div>
+
+        <div class="ticker" aria-hidden="true">
+          <span>
+            terraform · netlify · remote state · reproducible infra · IaC ·
+            secure by default ·
+          </span>
+          <span>
+            terraform · netlify · remote state · reproducible infra · IaC ·
+            secure by default ·
+          </span>
+        </div>
+      </main>
+
+      <section class="grid" style="margin-top: 26px">
+        <div class="box">
+          <h3>Contact (Netlify Forms demo)</h3>
+          <!-- Netlify will parse this at build/deploy time -->
+          <form
+            name="contact"
+            method="POST"
+            data-netlify="true"
+            class="grid"
+            style="grid-template-columns: 1fr"
+          >
+            <input type="hidden" name="form-name" value="contact" />
+            <label>
+              <span>Name</span><br />
+              <input
+                required
+                name="name"
+                placeholder="Ada Lovelace"
+                style="
+                  width: 100%;
+                  padding: 10px;
+                  border-radius: 10px;
+                  border: 1px solid rgba(148, 163, 184, 0.3);
+                  background: #0b1220;
+                  color: var(--ink);
+                "
+              />
+            </label>
+            <label>
+              <span>Message</span><br />
+              <textarea
+                required
+                name="message"
+                placeholder="Hello from Terraform!"
+                rows="4"
+                style="
+                  width: 100%;
+                  padding: 10px;
+                  border-radius: 10px;
+                  border: 1px solid rgba(148, 163, 184, 0.3);
+                  background: #0b1220;
+                  color: var(--ink);
+                "
+              ></textarea>
+            </label>
+            <button class="btn" type="submit">Send</button>
+          </form>
+          <small class="muted"
+            >Submissions appear in your Netlify dashboard.</small
+          >
+        </div>
+
+        <div class="box">
+          <h3>Customize</h3>
+          <p>
+            Edit the placeholders below to match your setup before you take your
+            screenshot or publish:
+          </p>
+          <ul>
+            <li><span class="mono">your-hcp-org</span> → your HCP org</li>
+            <li><span class="mono">netlify-site</span> → your workspace</li>
+            <li>
+              <span class="mono">https://example.netlify.app</span> → your live
+              URL output
+            </li>
+          </ul>
+          <p class="warn">
+            Tip: Terraform can also template this file using
+            <span class="mono">templatefile()</span> if you want to inject
+            values.
+          </p>
+        </div>
+      </section>
+
+      <footer>
+        Built with ❤ using Terraform & Netlify • Remote state in HCP Terraform
+      </footer>
+    </div>
+
+    <script>
+      // Populate dynamic bits without external deps
+      (function () {
+        const host = window.location.hostname || 'localhost';
+        document.getElementById('host-pill').textContent = 'host: ' + host;
+
+        // If on Netlify, show the actual https URL
+        const isNetlify = /\.netlify\.app$/.test(host);
+        const live = document.getElementById('live-url');
+        if (isNetlify) live.textContent = 'https://' + host;
+
+        // Optional: quick way for you to hardcode org/workspace from HTML if you like
+        // document.getElementById("tf-org").textContent = "my-org";
+        // document.getElementById("tf-workspace").textContent = "my-workspace";
+      })();
+    </script>
+  </body>
+</html>
